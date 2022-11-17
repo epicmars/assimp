@@ -124,6 +124,11 @@ struct ASSIMP_API aiNode {
       */
     unsigned int* mMeshes;
 
+    /**
+     * The skeleton or skin of this node.
+     */
+    int mSkeleton = -1;
+
     /** Metadata associated with this node or nullptr if there is no metadata.
       *  Whether any metadata is generated depends on the source file format. See the
       * @link importer_notes @endlink page for more information on every source file

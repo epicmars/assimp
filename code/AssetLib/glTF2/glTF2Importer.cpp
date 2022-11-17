@@ -1100,6 +1100,7 @@ aiNode *ImportNode(aiScene *pScene, glTF2::Asset &r, std::vector<unsigned int> &
             ainode->mMeshes = new unsigned int[count];
 
             if (node.skin) {
+                ainode->mSkeleton = node.skin.GetIndex();
                 for (int primitiveNo = 0; primitiveNo < count; ++primitiveNo) {
                     aiMesh *mesh = pScene->mMeshes[meshOffsets[mesh_idx] + primitiveNo];
                     unsigned int numBones = static_cast<unsigned int>(node.skin->jointNames.size());
@@ -1589,6 +1590,53 @@ void glTF2Importer::ImportEmbeddedTextures(glTF2::Asset &r) {
     }
 }
 
+void glTF2Importer::ImportSkeletons(glTF2::Asset &a) {
+    if (!a.scene)
+    {
+        return;
+    }
+    const unsigned numSkeletons = a.skins.Size();
+    if (numSkeletons == 0)
+    {
+        return;
+    }
+    
+    ASSIMP_LOG_DEBUG("Importing ", numSkeletons, " skeleton");
+    
+    if (a.skins.Size() > 0)
+    {
+        mScene->mNumSkeletons = numSkeletons;
+        mScene->mSkeletons = new aiSkeleton *[numSkeletons];
+        for (size_t i = 0; i < numSkeletons; i++)
+        {
+            aiSkeleton *ai_skeleton = mScene->mSkeletons[i] = new aiSkeleton;
+
+            Skin &skin = a.skins[i];
+
+            mat4 *pbindMatrices = nullptr;
+            skin.inverseBindMatrices->ExtractData(pbindMatrices);
+
+            ai_skeleton->mName = skin.name;
+            const size_t numBones = skin.jointNames.size();
+            ai_skeleton->mNumBones = (unsigned) numBones;
+            ai_skeleton->mBones = new aiSkeletonBone *[numBones];
+
+            for (size_t boneInx = 0; boneInx < numBones; boneInx++)
+            {
+                Ref<Node> joint = skin.jointNames[boneInx];
+                aiSkeletonBone *ai_skeleton_bone = ai_skeleton->mBones[boneInx] = new aiSkeletonBone;
+                ai_skeleton_bone->mNode = mScene->mRootNode->FindNode(aiString(joint->name));
+                CopyValue(pbindMatrices[boneInx], ai_skeleton_bone->mOffsetMatrix);
+            }
+
+            if (pbindMatrices)
+            {
+                delete []pbindMatrices;
+            }
+        }
+    }
+}
+
 void glTF2Importer::ImportCommonMetadata(glTF2::Asset &a) {
     ASSIMP_LOG_DEBUG("Importing metadata");
     ai_assert(mScene->mMetaData == nullptr);
@@ -1643,6 +1691,8 @@ void glTF2Importer::InternReadFile(const std::string &pFile, aiScene *pScene, IO
     ImportAnimations(asset);
 
     ImportCommonMetadata(asset);
+
+    ImportSkeletons(asset);
 
     if (pScene->mNumMeshes == 0) {
         pScene->mFlags |= AI_SCENE_FLAGS_INCOMPLETE;

@@ -76,6 +76,7 @@ private:
     void ImportNodes(glTF2::Asset &a);
     void ImportAnimations(glTF2::Asset &a);
     void ImportCommonMetadata(glTF2::Asset &a);
+    void ImportSkeletons(glTF2::Asset &a);
 
 private:
     std::vector<unsigned int> meshOffsets;
